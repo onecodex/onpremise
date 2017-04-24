@@ -1,1 +1,8 @@
 # Add plugins here
+dj_database_url==0.4.2
+django-sslify==0.2.7
+
+# SSO, appears Sentry isn't actively pushing to PyPI: https://botbot.me/freenode/sentry/2016-04-20/?msg=64576821&page=1
+-e git://github.com/getsentry/sentry-auth-google@52020f577f587595fea55f5d05520f1473deaad1#egg=sentry-auth-google
+-e git://github.com/getsentry/sentry-auth-github@43f6b270b3fac32326518a78be77562ebe5abacf#egg=sentry-auth-github
+

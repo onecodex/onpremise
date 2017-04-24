@@ -55,36 +55,14 @@ from sentry.utils.types import Bool, Int
 import os
 import os.path
 import six
+import dj_database_url
 
 CONF_ROOT = os.path.dirname(__file__)
 
-postgres = env('SENTRY_POSTGRES_HOST') or (env('POSTGRES_PORT_5432_TCP_ADDR') and 'postgres')
-if postgres:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'sentry.db.postgres',
-            'NAME': (
-                env('SENTRY_DB_NAME')
-                or env('POSTGRES_ENV_POSTGRES_USER')
-                or 'postgres'
-            ),
-            'USER': (
-                env('SENTRY_DB_USER')
-                or env('POSTGRES_ENV_POSTGRES_USER')
-                or 'postgres'
-            ),
-            'PASSWORD': (
-                env('SENTRY_DB_PASSWORD')
-                or env('POSTGRES_ENV_POSTGRES_PASSWORD')
-                or ''
-            ),
-            'HOST': postgres,
-            'PORT': (
-                env('SENTRY_POSTGRES_PORT')
-                or ''
-            ),
-        },
-    }
+SENTRY_OPTIONS['system.url-prefix'] = os.environ.get('SENTRY_URL_PREFIX', '')
+DATABASES = {
+    'default': dj_database_url.config()
+}
 
 # You should not change this setting after your database has been created
 # unless you have altered all schemas first
@@ -100,6 +78,10 @@ SENTRY_USE_BIG_INTS = True
 # Instruct Sentry that this install intends to be run by a single organization
 # and thus various UI optimizations should be enabled.
 SENTRY_SINGLE_ORGANIZATION = env('SENTRY_SINGLE_ORGANIZATION', True)
+
+# Restrict registration of new users
+SENTRY_FEATURES['auth:register'] = False
+SENTRY_PUBLIC = False
 
 #########
 # Redis #
@@ -243,6 +225,15 @@ SENTRY_OPTIONS['filestore.options'] = {
     'location': env('SENTRY_FILESTORE_DIR'),
 }
 
+if env('AWS_STORAGE_BUCKET_NAME'):
+    SENTRY_OPTIONS['filestore.backend'] = 's3'
+    SENTRY_OPTIONS['filestore.options'] = {
+        'access_key': env('AWS_ACCESS_KEY_ID'),
+        'secret_key': env('AWS_SECRET_ACCESS_KEY'),
+        'bucket_name': env('AWS_STORAGE_BUCKET_NAME'),
+        'encryption': Bool(env('AWS_S3_ENCRYPTION', True)),
+    }
+
 ##############
 # Web Server #
 ##############
@@ -250,16 +241,21 @@ SENTRY_OPTIONS['filestore.options'] = {
 # If you're using a reverse SSL proxy, you should enable the X-Forwarded-Proto
 # header and set `SENTRY_USE_SSL=1`
 
-if env('SENTRY_USE_SSL', False):
+
+if Bool(env('SENTRY_USE_SSL', True)):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+    SSLIFY_DISABLE = os.environ.get('SSLIFY_DISABLE', False)
+    MIDDLEWARE_CLASSES = (
+        'sslify.middleware.SSLifyMiddleware',
+    ) + MIDDLEWARE_CLASSES
 
 SENTRY_WEB_HOST = '0.0.0.0'
 SENTRY_WEB_PORT = 9000
 SENTRY_WEB_OPTIONS = {
-    # 'workers': 3,  # the number of web workers
+    'workers': 3,  # the number of web workers
 }
 
 
@@ -347,6 +343,10 @@ bind_env_config()
 # If you specify a MAILGUN_API_KEY, you definitely want EMAIL_REPLIES
 if SENTRY_OPTIONS.get('mail.mailgun-api-key'):
     SENTRY_OPTIONS.setdefault('mail.enable-replies', True)
+
+if 'GOOGLE_CLIENT_ID' in os.environ:
+    GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
+    GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')
 
 if 'GITHUB_APP_ID' in os.environ:
     GITHUB_EXTENDED_PERMISSIONS = ['repo']

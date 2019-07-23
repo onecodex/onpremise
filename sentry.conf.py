@@ -232,6 +232,7 @@ if env('AWS_STORAGE_BUCKET_NAME'):
         'secret_key': env('AWS_SECRET_ACCESS_KEY'),
         'bucket_name': env('AWS_STORAGE_BUCKET_NAME'),
         'encryption': Bool(env('AWS_S3_ENCRYPTION', True)),
+        'default_acl': 'private',
     }
 
 ##############
